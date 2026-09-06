@@ -1,0 +1,89 @@
+:root {
+  /* ==========================================================================
+     Little Us — Design Tokens
+     Aesthetic: Soft Romantic Editorial (Restrained, Warm, Tactile)
+     ========================================================================== */
+
+  /* Surface & Background (Warm Neutrals, Never Cold/Sterile) */
+  --color-bg-base: #FAF8F5;          /* Warm linen parchment */
+  --color-bg-surface: #FFFFFF;       /* Pure resting card surface */
+  --color-bg-subtle: #F4EFEA;        /* Soft candlelit secondary surface */
+  --color-bg-hover: #ECE4DC;         /* Gentle press surface */
+
+  /* Text & Content (Warm Espresso Charcoal, Never Harsh Pure Black) */
+  --color-text-primary: #2B2421;     /* Deep espresso */
+  --color-text-secondary: #635750;   /* Muted warm walnut */
+  --color-text-tertiary: #968981;    /* Soft dust */
+  --color-text-inverse: #FFFFFF;     /* Pure white on accent buttons */
+
+  /* Borders & Dividers (Subtle, tactile paper-edge feel) */
+  --color-border-subtle: #EFE8DF;
+  --color-border-default: #E2D7CB;
+  --color-border-focus: #BC5D54;
+
+  /* Primary Accent: Muted Rose / Warm Terracotta Coral */
+  --color-accent-subtle: #FDF3F1;    /* Softest wash */
+  --color-accent-border: #F6DCD8;    /* Delicate border */
+  --color-accent: #BC5D54;           /* Primary interactive tint */
+  --color-accent-hover: #A54B43;     /* Tactile hover/press */
+
+  /* Subtle Emotional Note Tints (Restrained, Never Neon) */
+  --color-tint-rose: #FAF1EF;
+  --color-tint-rose-border: #F3DBD7;
+  --color-tint-parchment: #F8F4EB;
+  --color-tint-parchment-border: #EFE4CE;
+  --color-tint-sage: #F2F5F0;
+  --color-tint-sage-border: #DCE5D8;
+  --color-tint-lavender: #F4F2F7;
+  --color-tint-lavender-border: #E4DEEE;
+
+  /* Spacing Scale (Consistent Rhythm) */
+  --space-2xs: 0.25rem;  /* 4px */
+  --space-xs: 0.5rem;    /* 8px */
+  --space-sm: 0.75rem;   /* 12px */
+  --space-md: 1rem;      /* 16px */
+  --space-lg: 1.5rem;    /* 24px */
+  --space-xl: 2rem;      /* 32px */
+  --space-2xl: 3rem;     /* 48px */
+  --space-3xl: 4rem;     /* 64px */
+
+  /* Typography Scale */
+  --font-serif: 'Newsreader', Georgia, serif;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Border Radii (Gentle, Not Gimmicky) */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  /* Shadows (Diffused, Natural Ambient Lighting) */
+  --shadow-subtle: 0 1px 3px rgba(43, 36, 33, 0.04), 0 1px 1px rgba(43, 36, 33, 0.02);
+  --shadow-card: 0 2px 8px rgba(43, 36, 33, 0.04), 0 1px 2px rgba(43, 36, 33, 0.02);
+  --shadow-raised: 0 6px 18px rgba(43, 36, 33, 0.06), 0 2px 4px rgba(43, 36, 33, 0.02);
+
+  /* Transitions (Restrained, Subdued) */
+  --ease-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 220ms;
+  --transition-fast: var(--duration-fast) var(--ease-soft);
+
+  /* Unified Compatibility Aliases */
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-tertiary: var(--color-text-tertiary);
+  --text-accent: var(--color-accent);
+  --text-inverse: var(--color-text-inverse);
+  --bg-primary: var(--color-bg-base);
+  --bg-secondary: var(--color-bg-subtle);
+  --bg-surface: var(--color-bg-surface);
+  --border-light: var(--color-border-subtle);
+  --border-medium: var(--color-border-default);
+  --blush-100: var(--color-tint-rose);
+  --blush-200: var(--color-tint-rose-border);
+  --blush-500: var(--color-accent);
+  --blush-600: var(--color-accent-hover);
+  --sage-100: var(--color-tint-sage);
+  --sage-200: var(--color-tint-sage-border);
+  --sage-500: #5C7055;
+}

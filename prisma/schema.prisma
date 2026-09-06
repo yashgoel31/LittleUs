@@ -1,0 +1,198 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  passwordHash String
+  name         String
+  avatarUrl    String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  // Relationships
+  memberships      CoupleMember[]
+  authoredMemories Memory[]
+  authoredNotes    LoveNote[]
+  authoredLetters  OpenWhenLetter[]
+
+  @@index([email])
+}
+
+model Couple {
+  id              String         @id @default(cuid())
+  name            String
+  slug            String         @unique
+  inviteCode      String         @unique
+  theme           String         @default("candlelight")
+  anniversaryDate DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Sharing settings
+  isShareEnabled        Boolean        @default(true)
+  sharePasscodeHash     String?
+  shareShowMemories     Boolean        @default(true)
+  shareShowNotes        Boolean        @default(true)
+  shareShowLetters      Boolean        @default(true)
+  shareShowDates        Boolean        @default(true)
+
+  // Relationships
+  members         CoupleMember[]
+  memories        Memory[]
+  loveNotes       LoveNote[]
+  openWhenLetters OpenWhenLetter[]
+  importantDates  ImportantDate[]
+  subscription    Subscription?
+
+  @@index([slug])
+  @@index([inviteCode])
+}
+
+model CoupleMember {
+  id        String   @id @default(cuid())
+  coupleId  String
+  userId    String
+  nickname  String
+  avatarUrl String?
+  role      String   @default("MEMBER") // "CREATOR" or "PARTNER"
+  joinedAt  DateTime @default(now())
+
+  // Relations
+  couple Couple @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([coupleId, userId])
+  @@index([userId])
+  @@index([coupleId])
+}
+
+model Memory {
+  id         String   @id @default(cuid())
+  coupleId   String
+  authorId   String
+  title      String
+  content    String
+  date       DateTime
+  location   String?
+  photoUrls  String   @default("[]") // JSON stringified array of URLs
+  isFavorite Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  couple Couple @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([coupleId, date])
+  @@index([coupleId, isFavorite])
+}
+
+model LoveNote {
+  id        String    @id @default(cuid())
+  coupleId  String
+  authorId  String
+  content   String
+  color     String    @default("blush") // "blush", "parchment", "sage", "lavender"
+  style     String    @default("blush") // "blush", "parchment", "sage", "lavender", "letterpress"
+  noteDate  DateTime?
+  recipient String?
+  isPinned  Boolean   @default(false)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relations
+  couple Couple @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([coupleId, isPinned])
+  @@index([coupleId, createdAt])
+}
+
+model OpenWhenLetter {
+  id          String    @id @default(cuid())
+  coupleId    String
+  authorId    String
+  recipientId String?
+  situation   String    // e.g. "you need a hug", "we are apart on a rainy night"
+  title       String?   // Full title e.g. "Open when you miss me"
+  content     String    // The message inside
+  photoUrl    String?   // Optional photo keepsake tucked inside
+  isOpened    Boolean   @default(false)
+  openedAt    DateTime?
+  unlockDate  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  couple Couple @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([coupleId, isOpened])
+}
+
+model ImportantDate {
+  id        String   @id @default(cuid())
+  coupleId  String
+  title       String
+  description String?
+  category    String?  @default("custom") // "anniversary", "birthday", "first_date", "custom"
+  date        DateTime
+  isYearly    Boolean  @default(false)
+  icon        String?  @default("heart")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  couple Couple @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+
+  @@index([coupleId, date])
+}
+
+model Subscription {
+  id                   String    @id @default(cuid())
+  coupleId             String    @unique
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  stripePriceId        String?
+  planType             String?   @default("lifetime") // "lifetime" | "annual"
+  status               String    @default("FREE") // "FREE", "ACTIVE", "TRIALING", "PAST_DUE", "CANCELED", "INACTIVE"
+  tier                 String    @default("FREE") // "FREE", "PREMIUM"
+  cancelAtPeriodEnd    Boolean   @default(false)
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  // Relations
+  couple Couple @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+
+  @@index([stripeCustomerId])
+  @@index([stripeSubscriptionId])
+}
+
+model ProcessedWebhook {
+  id        String   @id // Stripe Event ID (evt_xxx)
+  type      String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([token])
+}
+
