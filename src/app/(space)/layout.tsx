@@ -27,6 +27,7 @@ export default async function SpaceLayout({
         coupleName={auth.coupleName}
         myNickname={auth.myNickname}
         isPremium={auth.isPremium}
+        tier={auth.tier}
       />
       <main style={{ flex: 1, padding: '2rem 0 4rem 0' }}>
         <div className="container">{children}</div>

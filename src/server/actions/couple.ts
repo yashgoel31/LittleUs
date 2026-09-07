@@ -128,10 +128,10 @@ export async function updateCoupleSettings(input: unknown) {
   const dataToUpdate: Record<string, unknown> = {};
   if (parsed.data.name) dataToUpdate.name = parsed.data.name;
   if (parsed.data.theme) {
-    if (!isThemeAvailable(parsed.data.theme, auth.isPremium)) {
+    if (!isThemeAvailable(parsed.data.theme, auth.tier)) {
       return {
         success: false,
-        error: 'This theme is part of the Little Us Keepsake Club. Unlock more room to use all themes.',
+        error: 'This theme requires an upgrade to Sweetheart Club or Forever Club.',
       };
     }
     dataToUpdate.theme = parsed.data.theme;
@@ -188,8 +188,10 @@ export async function getCoupleOverview() {
           tier: true,
           status: true,
           planType: true,
-          stripeCustomerId: true,
-          stripeSubscriptionId: true,
+          amount: true,
+          currency: true,
+          razorpayOrderId: true,
+          razorpayPaymentId: true,
           cancelAtPeriodEnd: true,
           currentPeriodEnd: true,
         },

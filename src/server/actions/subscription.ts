@@ -2,13 +2,14 @@
 
 import { db } from '@/lib/db';
 import { requireCoupleAuth } from '@/lib/auth/guard';
-import { PLAN_CONFIG, getPlanConfig } from '@/lib/config/plans';
+import { PLAN_CONFIG, PlanTier, getPlanConfig } from '@/lib/config/plans';
 import {
-  stripe,
-  createCheckoutSession,
-  createBillingPortalSession,
-} from '@/lib/payments/stripe';
+  createRazorpayOrder,
+  verifyRazorpaySignature,
+  RazorpayOrderResult,
+} from '@/lib/payments/razorpay';
 import {
+  getSubscriptionTier,
   isPremiumSubscriber,
   getSubscriptionDisplayInfo,
 } from '@/lib/payments/subscriptionStatus';
@@ -28,11 +29,13 @@ export async function getSubscriptionDetails() {
           status: true,
           tier: true,
           planType: true,
-          stripePriceId: true,
-          stripeCustomerId: true,
-          stripeSubscriptionId: true,
-          cancelAtPeriodEnd: true,
+          amount: true,
+          currency: true,
+          razorpayOrderId: true,
+          razorpayPaymentId: true,
           currentPeriodEnd: true,
+          createdAt: true,
+          updatedAt: true,
         },
       },
       _count: {
@@ -50,294 +53,217 @@ export async function getSubscriptionDetails() {
     throw new Error('Couple space not found');
   }
 
-  const isPremium = isPremiumSubscriber(couple.subscription);
-  const currentPlan = getPlanConfig(isPremium);
+  const activeTier = getSubscriptionTier(couple.subscription);
+  const currentPlan = getPlanConfig(activeTier);
   const displayInfo = getSubscriptionDisplayInfo(couple.subscription);
 
   const usage = {
     memories: {
       count: couple._count.memories,
       limit: currentPlan.maxMemories,
-      isUnlimited: currentPlan.maxMemories === Infinity,
-      percent:
-        currentPlan.maxMemories === Infinity
-          ? 0
-          : Math.min(100, Math.round((couple._count.memories / currentPlan.maxMemories) * 100)),
+      isUnlimited: false,
+      percent: Math.min(100, Math.round((couple._count.memories / currentPlan.maxMemories) * 100)),
     },
     loveNotes: {
       count: couple._count.loveNotes,
       limit: currentPlan.maxLoveNotes,
-      isUnlimited: currentPlan.maxLoveNotes === Infinity,
-      percent:
-        currentPlan.maxLoveNotes === Infinity
-          ? 0
-          : Math.min(100, Math.round((couple._count.loveNotes / currentPlan.maxLoveNotes) * 100)),
+      isUnlimited: false,
+      percent: Math.min(100, Math.round((couple._count.loveNotes / currentPlan.maxLoveNotes) * 100)),
     },
     letters: {
       count: couple._count.openWhenLetters,
       limit: currentPlan.maxLetters,
-      isUnlimited: currentPlan.maxLetters === Infinity,
-      percent:
-        currentPlan.maxLetters === Infinity
-          ? 0
-          : Math.min(100, Math.round((couple._count.openWhenLetters / currentPlan.maxLetters) * 100)),
+      isUnlimited: false,
+      percent: Math.min(100, Math.round((couple._count.openWhenLetters / currentPlan.maxLetters) * 100)),
     },
     importantDates: {
       count: couple._count.importantDates,
       limit: currentPlan.maxImportantDates,
-      isUnlimited: currentPlan.maxImportantDates === Infinity,
-      percent:
-        currentPlan.maxImportantDates === Infinity
-          ? 0
-          : Math.min(100, Math.round((couple._count.importantDates / currentPlan.maxImportantDates) * 100)),
+      isUnlimited: false,
+      percent: Math.min(100, Math.round((couple._count.importantDates / currentPlan.maxImportantDates) * 100)),
     },
   };
 
   return {
-    isPremium,
+    tier: activeTier,
+    isPremium: isPremiumSubscriber(couple.subscription),
     plan: currentPlan,
     subscription: couple.subscription,
     displayInfo,
     usage,
     theme: couple.theme,
-    hasStripeConfigured: Boolean(process.env.STRIPE_SECRET_KEY),
+    plans: PLAN_CONFIG,
+    razorpayKeyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID || 'rzp_test_simulated',
+    hasRazorpayConfigured: Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET),
   };
 }
 
 /**
- * Initiates Checkout for the Little Us Keepsake Club.
- * Redirects to real Stripe Checkout if configured, or gracefully activates in dev mode.
+ * Creates a Razorpay Order for Sweetheart Club (₹69) or Forever Club (₹119)
  */
-export async function startCheckout(planOption: 'annual' | 'lifetime' = 'lifetime') {
+export async function createRazorpayOrderAction(planId: 'sweetheart_69' | 'forever_119') {
   const auth = await requireCoupleAuth();
 
   const couple = await db.couple.findUnique({
     where: { id: auth.coupleId },
-    include: { subscription: true },
   });
 
   if (!couple) {
-    return { success: false, error: 'Sanctuary space not found' };
-  }
-
-  // If Stripe is configured with a valid secret key, create a real Stripe Checkout Session
-  if (process.env.STRIPE_SECRET_KEY && stripe) {
-    try {
-      const checkout = await createCheckoutSession({
-        coupleId: auth.coupleId,
-        coupleName: auth.coupleName,
-        email: auth.userEmail,
-        plan: planOption,
-        currentStripeCustomerId: couple.subscription?.stripeCustomerId,
-      });
-
-      if (checkout.url) {
-        return {
-          success: true,
-          url: checkout.url,
-          sessionId: checkout.sessionId,
-        };
-      }
-    } catch (err: unknown) {
-      console.error('[Stripe Checkout Creation Error]:', err);
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : 'Unable to initiate checkout with payment provider.',
-      };
-    }
-  }
-
-  // Dev fallback / Simulated activation when running in local dev without live Stripe keys
-  await db.subscription.upsert({
-    where: { coupleId: auth.coupleId },
-    update: {
-      tier: 'PREMIUM',
-      status: 'ACTIVE',
-      planType: planOption,
-      stripePriceId: planOption,
-      cancelAtPeriodEnd: false,
-      currentPeriodEnd: planOption === 'annual' ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) : null,
-    },
-    create: {
-      coupleId: auth.coupleId,
-      tier: 'PREMIUM',
-      status: 'ACTIVE',
-      planType: planOption,
-      stripePriceId: planOption,
-      cancelAtPeriodEnd: false,
-      currentPeriodEnd: planOption === 'annual' ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) : null,
-    },
-  });
-
-  return {
-    success: true,
-    simulated: true,
-    message: 'Welcome to the Little Us Keepsake Club. More room has been unlocked for your story.',
-  };
-}
-
-/**
- * Creates a Stripe Billing Portal session for the couple to update card or manage invoices.
- */
-export async function openBillingPortal() {
-  const auth = await requireCoupleAuth();
-
-  const subscription = await db.subscription.findUnique({
-    where: { coupleId: auth.coupleId },
-  });
-
-  if (!subscription?.stripeCustomerId) {
-    return {
-      success: false,
-      error: 'No payment record found with payment provider. If this was a simulated upgrade, manage it directly here.',
-    };
+    return { success: false, error: 'Couple space not found' };
   }
 
   try {
-    const portalUrl = await createBillingPortalSession({
-      stripeCustomerId: subscription.stripeCustomerId,
+    const order = await createRazorpayOrder({
+      coupleId: auth.coupleId,
+      coupleName: auth.coupleName,
+      email: auth.userEmail,
+      planId,
     });
 
-    if (portalUrl) {
-      return { success: true, url: portalUrl };
-    }
-    return { success: false, error: 'Could not generate billing portal session' };
+    return {
+      success: true,
+      order,
+    };
   } catch (err: unknown) {
+    console.error('[Razorpay Order Creation Error]:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to reach customer billing portal',
+      error: err instanceof Error ? err.message : 'Unable to create payment order',
     };
   }
 }
 
 /**
- * Cancels the annual membership.
- * Follows Stripe best practices: cancels at period end so the couple keeps what they paid for.
+ * Verifies Razorpay payment signature and upgrades couple space to SWEETHEART or FOREVER for 1 year (365 days).
+ */
+export async function verifyAndActivateSubscription(params: {
+  orderId: string;
+  paymentId: string;
+  signature: string;
+  planId: 'sweetheart_69' | 'forever_119';
+}) {
+  const auth = await requireCoupleAuth();
+
+  const isValid = verifyRazorpaySignature({
+    orderId: params.orderId,
+    paymentId: params.paymentId,
+    signature: params.signature,
+  });
+
+  if (!isValid) {
+    return {
+      success: false,
+      error: 'Payment verification failed. Invalid digital signature from payment provider.',
+    };
+  }
+
+  const targetTier: PlanTier = params.planId === 'sweetheart_69' ? 'SWEETHEART' : 'FOREVER';
+  const plan = PLAN_CONFIG[targetTier];
+  const oneYearFromNow = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+
+  await db.subscription.upsert({
+    where: { coupleId: auth.coupleId },
+    update: {
+      tier: targetTier,
+      status: 'ACTIVE',
+      planType: params.planId,
+      amount: plan.priceInPaise,
+      currency: 'INR',
+      currentPeriodEnd: oneYearFromNow,
+      razorpayOrderId: params.orderId,
+      razorpayPaymentId: params.paymentId,
+      razorpaySignature: params.signature,
+    },
+    create: {
+      coupleId: auth.coupleId,
+      tier: targetTier,
+      status: 'ACTIVE',
+      planType: params.planId,
+      amount: plan.priceInPaise,
+      currency: 'INR',
+      currentPeriodEnd: oneYearFromNow,
+      razorpayOrderId: params.orderId,
+      razorpayPaymentId: params.paymentId,
+      razorpaySignature: params.signature,
+    },
+  });
+
+  return {
+    success: true,
+    tier: targetTier,
+    planName: plan.name,
+    message: `Welcome to the ${plan.name}! 1-year access has been unlocked for your sanctuary story.`,
+  };
+}
+
+/**
+ * Initiates Checkout / Direct activation for simulated dev or callers
+ */
+export async function startCheckout(planOption: 'sweetheart_69' | 'forever_119' | 'annual' | 'lifetime' = 'sweetheart_69') {
+  const normalizedPlanId =
+    planOption === 'lifetime' || planOption === 'forever_119' ? 'forever_119' : 'sweetheart_69';
+
+  return createRazorpayOrderAction(normalizedPlanId);
+}
+
+/**
+ * Cancels or resets membership to Free Sanctuary.
  */
 export async function cancelSubscription() {
-  const auth = await requireCoupleAuth();
-
-  const subscription = await db.subscription.findUnique({
-    where: { coupleId: auth.coupleId },
-  });
-
-  if (!subscription) {
-    return { success: false, error: 'No subscription record found' };
-  }
-
-  // If connected to Stripe subscription
-  if (stripe && subscription.stripeSubscriptionId) {
-    try {
-      await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
-        cancel_at_period_end: true,
-      });
-
-      await db.subscription.update({
-        where: { id: subscription.id },
-        data: {
-          cancelAtPeriodEnd: true,
-        },
-      });
-
-      return {
-        success: true,
-        message: 'Your membership is scheduled to cancel. You will have full access until your billing period ends.',
-      };
-    } catch (err: unknown) {
-      console.error('[Stripe Cancel Error]:', err);
-    }
-  }
-
-  // Local/simulated cancellation
-  await db.subscription.update({
-    where: { id: subscription.id },
-    data: {
-      cancelAtPeriodEnd: true,
-      status: 'CANCELED',
-    },
-  });
-
-  return {
-    success: true,
-    message: 'Your membership has been set to cancel. All existing memories remain completely safe.',
-  };
+  return revertToFreeSanctuary();
 }
 
 /**
- * Resumes an annual subscription that was scheduled to cancel at period end.
+ * Resumes membership
  */
 export async function resumeSubscription() {
-  const auth = await requireCoupleAuth();
-
-  const subscription = await db.subscription.findUnique({
-    where: { coupleId: auth.coupleId },
-  });
-
-  if (!subscription) {
-    return { success: false, error: 'No subscription record found' };
-  }
-
-  if (stripe && subscription.stripeSubscriptionId) {
-    try {
-      await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
-        cancel_at_period_end: false,
-      });
-    } catch (err: unknown) {
-      console.error('[Stripe Resume Error]:', err);
-    }
-  }
-
-  await db.subscription.update({
-    where: { id: subscription.id },
-    data: {
-      cancelAtPeriodEnd: false,
-      status: 'ACTIVE',
-      tier: 'PREMIUM',
-    },
-  });
-
   return {
     success: true,
-    message: 'Your Keepsake Club membership has been resumed seamlessly.',
+    message: 'Your membership is active.',
   };
 }
 
 /**
- * Reverts to Free Sanctuary (test helper & instant downgrade).
+ * Billing portal placeholder for Razorpay
+ */
+export async function openBillingPortal() {
+  return {
+    success: false,
+    error: 'Your pack is a one-time payment in INR. No recurring invoices need management.',
+  };
+}
+
+/**
+ * Reverts couple space to Free Sanctuary.
  */
 export async function revertToFreeSanctuary() {
   const auth = await requireCoupleAuth();
 
-  const subscription = await db.subscription.findUnique({
-    where: { coupleId: auth.coupleId },
-  });
-
-  if (stripe && subscription?.stripeSubscriptionId) {
-    try {
-      await stripe.subscriptions.cancel(subscription.stripeSubscriptionId);
-    } catch (err: unknown) {
-      console.error('[Stripe Cancel Error]:', err);
-    }
-  }
-
   await db.subscription.upsert({
     where: { coupleId: auth.coupleId },
     update: {
       tier: 'FREE',
       status: 'FREE',
-      stripePriceId: null,
-      cancelAtPeriodEnd: false,
-      currentPeriodEnd: null,
+      planType: 'free',
+      amount: 0,
+      currency: 'INR',
+      razorpayOrderId: null,
+      razorpayPaymentId: null,
+      razorpaySignature: null,
     },
     create: {
       coupleId: auth.coupleId,
       tier: 'FREE',
       status: 'FREE',
+      planType: 'free',
+      amount: 0,
+      currency: 'INR',
     },
   });
 
   return {
     success: true,
-    message: 'Your sanctuary is now on the Free plan. All memories and letters remain safe.',
+    message: 'Your sanctuary is now on the Free Sanctuary tier. All existing memories remain safe.',
   };
 }
+

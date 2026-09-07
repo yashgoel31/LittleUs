@@ -3,6 +3,7 @@
 import React from 'react';
 import { formatIntimateDate } from '@/lib/utils';
 import { toggleFavoriteMemory, deleteMemory } from '@/server/actions/memories';
+import { checkDeletionLock } from '@/lib/config/plans';
 
 interface MemoryCardProps {
   memory: {
@@ -13,6 +14,7 @@ interface MemoryCardProps {
     location?: string | null;
     photoUrls?: string[];
     isFavorite: boolean;
+    createdAt?: Date | string;
     author: {
       name: string;
     };
@@ -23,6 +25,7 @@ interface MemoryCardProps {
 export function MemoryCard({ memory, onRefresh }: MemoryCardProps) {
   const [isFav, setIsFav] = React.useState(memory.isFavorite);
   const [isDeleting, setIsDeleting] = React.useState(false);
+  const lock = checkDeletionLock(memory.createdAt);
 
   const handleToggleFav = async () => {
     setIsFav(!isFav);
@@ -31,9 +34,18 @@ export function MemoryCard({ memory, onRefresh }: MemoryCardProps) {
   };
 
   const handleDelete = async () => {
+    if (lock.isLocked) {
+      alert(lock.formattedLockMessage);
+      return;
+    }
     if (!confirm('Are you sure you want to let go of this memory?')) return;
     setIsDeleting(true);
-    await deleteMemory(memory.id);
+    const res = await deleteMemory(memory.id);
+    if (!res.success) {
+      alert(res.error || 'Unable to delete memory');
+      setIsDeleting(false);
+      return;
+    }
     onRefresh?.();
   };
 
@@ -81,13 +93,23 @@ export function MemoryCard({ memory, onRefresh }: MemoryCardProps) {
             style={{
               background: 'none',
               border: 'none',
-              cursor: 'pointer',
+              cursor: lock.isLocked ? 'default' : 'pointer',
               fontSize: '0.8125rem',
               color: 'var(--text-tertiary)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.2rem',
+              padding: '0.2rem 0.4rem',
+              borderRadius: 'var(--radius-sm)',
+              backgroundColor: lock.isLocked ? 'var(--bg-secondary)' : 'transparent',
             }}
-            title="Delete memory"
+            title={
+              lock.isLocked
+                ? `Protected: Locked for 21 days from creation (${lock.daysRemaining}d remaining)`
+                : 'Delete memory'
+            }
           >
-            ✕
+            {lock.isLocked ? `🔒 ${lock.daysRemaining}d` : '✕'}
           </button>
         </div>
       </div>

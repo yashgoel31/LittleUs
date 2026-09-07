@@ -3,6 +3,7 @@
 import React from 'react';
 import { formatIntimateDate, formatRelativeTime } from '@/lib/utils';
 import { togglePinLoveNote, deleteLoveNote } from '@/server/actions/loveNotes';
+import { checkDeletionLock } from '@/lib/config/plans';
 import { IconPin } from '@/components/ui/Icons';
 
 export interface LoveNoteData {
@@ -74,6 +75,7 @@ export const NOTE_STYLES = {
 export function LoveNoteCard({ note, onRefresh, onView, onEdit }: LoveNoteCardProps) {
   const [isPinned, setIsPinned] = React.useState(note.isPinned);
   const [isDeleting, setIsDeleting] = React.useState(false);
+  const lock = checkDeletionLock(note.createdAt);
 
   const currentStyleKey = (note.style || note.color || 'blush') as keyof typeof NOTE_STYLES;
   const scheme = NOTE_STYLES[currentStyleKey] || NOTE_STYLES.blush;
@@ -87,9 +89,18 @@ export function LoveNoteCard({ note, onRefresh, onView, onEdit }: LoveNoteCardPr
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (lock.isLocked) {
+      alert(lock.formattedLockMessage);
+      return;
+    }
     if (!confirm('Let go of this note?')) return;
     setIsDeleting(true);
-    await deleteLoveNote(note.id);
+    const res = await deleteLoveNote(note.id);
+    if (!res.success) {
+      alert(res.error || 'Unable to delete note');
+      setIsDeleting(false);
+      return;
+    }
     onRefresh?.();
   };
 
@@ -193,14 +204,23 @@ export function LoveNoteCard({ note, onRefresh, onView, onEdit }: LoveNoteCardPr
             style={{
               background: 'none',
               border: 'none',
-              cursor: 'pointer',
+              cursor: lock.isLocked ? 'default' : 'pointer',
               fontSize: '0.75rem',
               color: 'var(--color-text-tertiary)',
-              padding: '0.2rem',
+              padding: '0.2rem 0.35rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.15rem',
+              borderRadius: 'var(--radius-sm)',
+              backgroundColor: lock.isLocked ? 'rgba(0,0,0,0.04)' : 'transparent',
             }}
-            title="Delete note"
+            title={
+              lock.isLocked
+                ? `Protected: Locked for 21 days from creation (${lock.daysRemaining}d remaining)`
+                : 'Delete note'
+            }
           >
-            ✕
+            {lock.isLocked ? `🔒 ${lock.daysRemaining}d` : '✕'}
           </button>
         </div>
       </div>

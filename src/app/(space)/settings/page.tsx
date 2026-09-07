@@ -3,18 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getCoupleOverview, updateCoupleSettings } from '@/server/actions/couple';
-import {
-  cancelSubscription,
-  resumeSubscription,
-  openBillingPortal,
-  revertToFreeSanctuary,
-} from '@/server/actions/subscription';
+import { revertToFreeSanctuary } from '@/server/actions/subscription';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { ShareModal } from '@/components/features/ShareModal';
 import { UpgradeModal } from '@/components/features/UpgradeModal';
-import { PLAN_CONFIG, isThemePremium } from '@/lib/config/plans';
+import { PLAN_CONFIG, isThemePremium, getPlanConfig } from '@/lib/config/plans';
 import {
+  getSubscriptionTier,
   isPremiumSubscriber,
   getSubscriptionDisplayInfo,
 } from '@/lib/payments/subscriptionStatus';
@@ -40,9 +36,10 @@ interface CoupleData {
     tier: string;
     status: string;
     planType?: string | null;
-    stripeCustomerId?: string | null;
-    stripeSubscriptionId?: string | null;
-    cancelAtPeriodEnd?: boolean | null;
+    amount?: number | null;
+    currency?: string | null;
+    razorpayOrderId?: string | null;
+    razorpayPaymentId?: string | null;
     currentPeriodEnd?: Date | string | null;
   } | null;
   _count: {
@@ -65,7 +62,6 @@ export default function SpaceSettingsPage() {
   const [upgradeHighlight, setUpgradeHighlight] = useState<string | undefined>(undefined);
   const [message, setMessage] = useState<string | null>(null);
 
-  const [loadingPortal, setLoadingPortal] = useState(false);
 
   const fetchOverview = async () => {
     const data = await getCoupleOverview();
@@ -111,35 +107,7 @@ export default function SpaceSettingsPage() {
     setTimeout(() => setCopied(false), 2500);
   };
 
-  const handleOpenBillingPortal = async () => {
-    setLoadingPortal(true);
-    const res = await openBillingPortal();
-    setLoadingPortal(false);
-    if (res.success && res.url) {
-      window.location.href = res.url;
-    } else {
-      setMessage(res.error || 'Billing portal is available for Stripe accounts.');
-    }
-  };
 
-  const handleCancelSub = async () => {
-    if (!confirm('Are you sure you want to cancel your Keepsake Club renewal? Your access remains active until the end of your billing cycle.')) {
-      return;
-    }
-    setSaving(true);
-    const res = await cancelSubscription();
-    setSaving(false);
-    setMessage(res.message || res.error || null);
-    fetchOverview();
-  };
-
-  const handleResumeSub = async () => {
-    setSaving(true);
-    const res = await resumeSubscription();
-    setSaving(false);
-    setMessage(res.message || res.error || null);
-    fetchOverview();
-  };
 
   const handleRevertFree = async () => {
     if (!confirm('Switch space to Free Sanctuary tier? (All existing memories remain completely safe).')) {
@@ -157,11 +125,13 @@ export default function SpaceSettingsPage() {
   }
 
   const isPremium = isPremiumSubscriber(couple.subscription);
+  const currentTier = getSubscriptionTier(couple.subscription);
+  const currentPlan = getPlanConfig(currentTier);
   const displayInfo = getSubscriptionDisplayInfo(couple.subscription);
 
   const handleSelectTheme = (tId: 'candlelight' | 'rose' | 'sage' | 'midnight', tName: string) => {
     if (isThemePremium(tId) && !isPremium) {
-      setUpgradeHighlight(`The ${tName} atmosphere is part of the Keepsake Club.`);
+      setUpgradeHighlight(`The ${tName} atmosphere requires Sweetheart or Forever Club.`);
       setShowUpgradeModal(true);
       return;
     }
@@ -372,12 +342,12 @@ export default function SpaceSettingsPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
           <div>
             <h3 className="font-serif" style={{ fontSize: '1.25rem', marginBottom: '0.25rem' }}>
-              Little Us Keepsake Club
+              Sanctuary Space & Membership
             </h3>
             <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-              Current Plan: <strong>{isPremium ? PLAN_CONFIG.PREMIUM.name : PLAN_CONFIG.FREE.name}</strong>
+              Current Plan: <strong>{currentPlan.name}</strong> ({currentPlan.priceFormatted})
             </p>
-            <p style={{ fontSize: '0.8125rem', color: displayInfo.isCancelScheduled ? '#B45309' : 'var(--text-tertiary)', marginTop: '0.2rem' }}>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)', marginTop: '0.2rem' }}>
               {displayInfo.note}
             </p>
           </div>
@@ -399,19 +369,19 @@ export default function SpaceSettingsPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem', fontSize: '0.875rem' }}>
           <div style={{ padding: '0.75rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-sm)' }}>
             <span style={{ color: 'var(--text-tertiary)', display: 'block', fontSize: '0.75rem' }}>MEMORIES</span>
-            <strong>{couple._count.memories}</strong> / {isPremium ? '∞' : PLAN_CONFIG.FREE.maxMemories}
+            <strong>{couple._count.memories}</strong> / {currentPlan.maxMemories}
           </div>
           <div style={{ padding: '0.75rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-sm)' }}>
             <span style={{ color: 'var(--text-tertiary)', display: 'block', fontSize: '0.75rem' }}>LOVE NOTES</span>
-            <strong>{couple._count.loveNotes}</strong> / {isPremium ? '∞' : PLAN_CONFIG.FREE.maxLoveNotes}
+            <strong>{couple._count.loveNotes}</strong> / {currentPlan.maxLoveNotes}
           </div>
           <div style={{ padding: '0.75rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-sm)' }}>
             <span style={{ color: 'var(--text-tertiary)', display: 'block', fontSize: '0.75rem' }}>OPEN WHEN LETTERS</span>
-            <strong>{couple._count.openWhenLetters}</strong> / {isPremium ? '∞' : PLAN_CONFIG.FREE.maxLetters}
+            <strong>{couple._count.openWhenLetters}</strong> / {currentPlan.maxLetters}
           </div>
           <div style={{ padding: '0.75rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-sm)' }}>
             <span style={{ color: 'var(--text-tertiary)', display: 'block', fontSize: '0.75rem' }}>MILESTONE DATES</span>
-            <strong>{couple._count.importantDates}</strong> / {isPremium ? '∞' : PLAN_CONFIG.FREE.maxImportantDates}
+            <strong>{couple._count.importantDates}</strong> / {currentPlan.maxImportantDates}
           </div>
         </div>
 
@@ -428,14 +398,14 @@ export default function SpaceSettingsPage() {
             paddingTop: '1.25rem',
           }}
         >
-          {!isPremium ? (
+          {currentTier === 'FREE' ? (
             <>
               <div>
                 <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-primary)' }}>
                   More room for our story.
                 </div>
                 <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-                  Never worry about deleting a memory. Unlock boundless letters, themes, and high-res archives.
+                  Unlock 10 memories & 15 notes with Sweetheart (₹69 / yr) or 25/35/30/30 with Forever (₹119 / yr).
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -447,7 +417,7 @@ export default function SpaceSettingsPage() {
                   }}
                   style={{ fontSize: '0.8125rem' }}
                 >
-                  Explore Keepsake Club
+                  Explore Annual Plans (from ₹69 / yr)
                 </Button>
               </div>
             </>
@@ -455,43 +425,25 @@ export default function SpaceSettingsPage() {
             <>
               <div>
                 <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--color-accent)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <IconSparkles size={14} /> You're in the Keepsake Club
+                  <IconSparkles size={14} /> You're in the {currentPlan.name}
                 </div>
                 <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-                  {displayInfo.isCancelScheduled
-                    ? `Access continues until ${displayInfo.periodEnd?.toLocaleDateString()}`
-                    : 'Infinite room is open for both of you. One membership covers your whole story.'}
+                  Annual membership in Indian Rupees (₹). Both of you share this expanded room for 1 full year.
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                {couple.subscription?.stripeCustomerId && (
-                  <Button
-                    variant="secondary"
-                    onClick={handleOpenBillingPortal}
-                    isLoading={loadingPortal}
-                    style={{ fontSize: '0.8125rem' }}
-                  >
-                    Manage Cards & Invoices ↗
-                  </Button>
-                )}
-
-                {displayInfo.isCancelScheduled ? (
+                {currentTier === 'SWEETHEART' && (
                   <Button
                     variant="primary"
-                    onClick={handleResumeSub}
+                    onClick={() => {
+                      setUpgradeHighlight('Upgrade from Sweetheart to Forever Club');
+                      setShowUpgradeModal(true);
+                    }}
                     style={{ fontSize: '0.8125rem' }}
                   >
-                    Keep Membership
+                    Upgrade to Forever (₹119 / yr)
                   </Button>
-                ) : couple.subscription?.planType === 'annual' ? (
-                  <button
-                    onClick={handleCancelSub}
-                    className="btn-ghost"
-                    style={{ fontSize: '0.8125rem', color: 'var(--color-text-tertiary)' }}
-                  >
-                    Cancel Renewal
-                  </button>
-                ) : null}
+                )}
 
                 <button
                   onClick={handleRevertFree}
@@ -514,6 +466,7 @@ export default function SpaceSettingsPage() {
       <UpgradeModal
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
+        currentTier={currentTier}
         isAlreadyPremium={isPremium}
         highlightFeature={upgradeHighlight}
         onSuccess={() => fetchOverview()}

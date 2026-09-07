@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { ImportantDateInputSchema } from '@/lib/validation';
 import { requireCoupleAuth, assertCoupleOwnership } from '@/lib/auth/guard';
 import { checkPlanLimit } from '@/lib/payments/stripe';
+import { checkDeletionLock } from '@/lib/config/plans';
 import { calculateDateMilestone } from '@/lib/utils';
 
 export async function createImportantDate(input: unknown) {
@@ -18,11 +19,11 @@ export async function createImportantDate(input: unknown) {
     where: { coupleId: auth.coupleId },
   });
 
-  const { allowed, limit } = checkPlanLimit(auth.isPremium, 'importantDates', currentCount);
+  const { allowed, limit, tierName } = checkPlanLimit(auth.tier, 'importantDates', currentCount);
   if (!allowed) {
     return {
       success: false,
-      error: `You have filled your sanctuary room of ${limit} milestone dates. Unlock more room for our story with the Little Us Keepsake Club.`,
+      error: `You have filled your room of ${limit} milestone dates on the ${tierName}. Unlock more room with Sweetheart Club (₹69) or Forever Club (₹119).`,
     };
   }
 
@@ -111,6 +112,7 @@ export async function getImportantDates() {
       category: true,
       isYearly: true,
       icon: true,
+      createdAt: true,
     },
   });
 
@@ -141,11 +143,20 @@ export async function deleteImportantDate(dateId: string) {
 
   const item = await db.importantDate.findUnique({
     where: { id: dateId },
-    select: { id: true, coupleId: true },
+    select: { id: true, coupleId: true, createdAt: true },
   });
 
   if (!item) return { success: false, error: 'Date not found' };
   assertCoupleOwnership(item.coupleId, auth.coupleId);
+
+  const lock = checkDeletionLock(item.createdAt);
+  if (lock.isLocked) {
+    return {
+      success: false,
+      error: lock.formattedLockMessage,
+      daysRemaining: lock.daysRemaining,
+    };
+  }
 
   await db.importantDate.delete({
     where: { id: dateId },

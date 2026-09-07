@@ -11,9 +11,10 @@ interface SpaceNavigationProps {
   coupleName: string;
   myNickname: string;
   isPremium?: boolean;
+  tier?: string;
 }
 
-export function SpaceNavigation({ coupleName, myNickname, isPremium }: SpaceNavigationProps) {
+export function SpaceNavigation({ coupleName, myNickname, isPremium, tier }: SpaceNavigationProps) {
   const pathname = usePathname();
 
   const links = [
@@ -23,6 +24,15 @@ export function SpaceNavigation({ coupleName, myNickname, isPremium }: SpaceNavi
     { href: '/letters', label: 'Open When' },
     { href: '/dates', label: 'Dates' },
   ];
+
+  const badgeText =
+    tier === 'FOREVER'
+      ? 'Forever'
+      : tier === 'SWEETHEART'
+      ? 'Sweetheart'
+      : isPremium
+      ? 'Club'
+      : null;
 
   return (
     <header
@@ -62,8 +72,8 @@ export function SpaceNavigation({ coupleName, myNickname, isPremium }: SpaceNavi
               {coupleName}
             </span>
           </Link>
-          {isPremium ? (
-            <Link href="/upgrade" title="Little Us Keepsake Club" style={{ textDecoration: 'none' }}>
+          {badgeText ? (
+            <Link href="/upgrade" title={`Little Us ${badgeText} Club`} style={{ textDecoration: 'none' }}>
               <span
                 style={{
                   fontSize: '0.625rem',
@@ -78,7 +88,7 @@ export function SpaceNavigation({ coupleName, myNickname, isPremium }: SpaceNavi
                   display: 'inline-block',
                 }}
               >
-                Club
+                {badgeText}
               </span>
             </Link>
           ) : null}

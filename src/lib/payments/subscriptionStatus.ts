@@ -2,128 +2,126 @@
  * Subscription State Model and Server-side Verification
  *
  * Strict security requirement:
- * "Never trust the frontend to determine whether a user is premium.
- *  Premium access must be determined from verified server-side subscription state."
+ * "Never trust the frontend to determine whether a user is upgraded.
+ *  Access and limits must be verified from server-side subscription state."
  */
 
-export type SubscriptionStatus =
-  | 'FREE'
-  | 'ACTIVE'
-  | 'TRIALING'
-  | 'PAST_DUE'
-  | 'CANCELED'
-  | 'INACTIVE';
+import { PlanTier, PLAN_CONFIG, normalizeTier } from '@/lib/config/plans';
 
-export type SubscriptionTier = 'FREE' | 'PREMIUM';
+export type SubscriptionStatus = 'FREE' | 'ACTIVE' | 'CANCELED' | 'EXPIRED';
 
 export interface SubscriptionRecord {
   id?: string;
   tier: string;
   status: string;
   planType?: string | null;
+  amount?: number | null;
+  currency?: string | null;
   currentPeriodEnd?: Date | string | null;
   cancelAtPeriodEnd?: boolean | null;
-  stripeCustomerId?: string | null;
-  stripeSubscriptionId?: string | null;
-  stripePriceId?: string | null;
+  razorpayOrderId?: string | null;
+  razorpayPaymentId?: string | null;
+  razorpaySignature?: string | null;
 }
 
 /**
- * Verified Server-Side Premium Check.
- * Handles:
- * - active: Full access
- * - trialing: Full access
- * - past_due: Locked out of premium creation until payment is fixed
- * - canceled: Access granted only if within remaining paid period (currentPeriodEnd > now)
- * - expired/inactive: Locked out
+ * Returns the verified active PlanTier ('FREE' | 'SWEETHEART' | 'FOREVER')
+ */
+export function getSubscriptionTier(subscription: SubscriptionRecord | null | undefined): PlanTier {
+  if (!subscription) return 'FREE';
+
+  const normalizedStatus = (subscription.status || 'FREE').toUpperCase();
+  if (normalizedStatus !== 'ACTIVE') {
+    return 'FREE';
+  }
+
+  // 1-Year Expiration Check
+  if (subscription.currentPeriodEnd) {
+    const periodEnd = new Date(subscription.currentPeriodEnd);
+    if (!isNaN(periodEnd.getTime()) && periodEnd.getTime() < Date.now()) {
+      return 'FREE';
+    }
+  }
+
+  return normalizeTier(subscription.tier);
+}
+
+/**
+ * Verified check: returns true if the couple has either Sweetheart or Forever active plan.
  */
 export function isPremiumSubscriber(subscription: SubscriptionRecord | null | undefined): boolean {
-  if (!subscription) return false;
-  if (subscription.tier !== 'PREMIUM') return false;
-
-  const now = new Date();
-  const normalizedStatus = (subscription.status || 'FREE').toUpperCase();
-
-  switch (normalizedStatus) {
-    case 'ACTIVE':
-    case 'TRIALING':
-      return true;
-
-    case 'CANCELED':
-    case 'CANCELLED':
-      // If canceled, couple retains access until their paid billing period expires
-      if (subscription.currentPeriodEnd) {
-        const periodEnd = new Date(subscription.currentPeriodEnd);
-        return periodEnd > now;
-      }
-      return false;
-
-    case 'PAST_DUE':
-    case 'INCOMPLETE_EXPIRED':
-    case 'UNPAID':
-    case 'INACTIVE':
-    case 'FREE':
-    default:
-      return false;
-  }
+  const tier = getSubscriptionTier(subscription);
+  return tier === 'SWEETHEART' || tier === 'FOREVER';
 }
 
 /**
- * Returns user-friendly status badge metadata for UI display.
+ * Returns user-friendly status badge metadata and notes for UI display.
  */
 export function getSubscriptionDisplayInfo(subscription: SubscriptionRecord | null | undefined) {
-  const isPremium = isPremiumSubscriber(subscription);
-  const status = (subscription?.status || 'FREE').toUpperCase();
-  const planType = subscription?.planType === 'annual' ? 'Annual Keepsake' : 'Lifetime Keepsake';
-  const periodEnd = subscription?.currentPeriodEnd ? new Date(subscription.currentPeriodEnd) : null;
-  const isCancelScheduled = Boolean(subscription?.cancelAtPeriodEnd && periodEnd && periodEnd > new Date());
+  const tier = getSubscriptionTier(subscription);
+  const rawStatus = (subscription?.status || 'FREE').toUpperCase();
+  const config = PLAN_CONFIG[tier];
 
-  let badgeText = 'Free Sanctuary';
-  let badgeColor = 'var(--text-secondary)';
-  let badgeBg = 'var(--bg-secondary)';
-  let note = 'Genuinely free for your daily story';
+  // Check if expired
+  const isExpired =
+    rawStatus === 'ACTIVE' &&
+    subscription?.currentPeriodEnd &&
+    new Date(subscription.currentPeriodEnd).getTime() < Date.now();
 
-  if (isPremium) {
-    if (isCancelScheduled) {
-      badgeText = 'Canceling Soon';
-      badgeColor = '#B45309'; // Amber
-      badgeBg = '#FEF3C7';
-      note = `Access remains active until ${periodEnd?.toLocaleDateString()}`;
-    } else if (status === 'TRIALING') {
-      badgeText = 'Trialing Keepsake';
-      badgeColor = 'var(--color-accent)';
-      badgeBg = 'var(--color-tint-rose)';
-      note = `Trial active until ${periodEnd?.toLocaleDateString() || 'period end'}`;
-    } else {
-      badgeText = subscription?.planType === 'annual' ? 'Active Annual' : 'Lifetime Keepsake';
-      badgeColor = 'var(--color-accent)';
-      badgeBg = 'var(--color-tint-rose)';
-      note =
-        subscription?.planType === 'annual'
-          ? `Renews on ${periodEnd?.toLocaleDateString()}`
-          : 'One quiet gift for your whole story';
+  let validUntilFormatted: string | null = null;
+  if (subscription?.currentPeriodEnd) {
+    const periodEnd = new Date(subscription.currentPeriodEnd);
+    if (!isNaN(periodEnd.getTime())) {
+      validUntilFormatted = periodEnd.toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      });
     }
-  } else if (status === 'PAST_DUE') {
-    badgeText = 'Payment Past Due';
-    badgeColor = '#DC2626'; // Red
-    badgeBg = '#FEE2E2';
-    note = 'Your latest payment did not go through. Please update payment method.';
-  } else if (status === 'CANCELED') {
-    badgeText = 'Membership Expired';
-    badgeColor = 'var(--text-secondary)';
-    badgeBg = 'var(--bg-secondary)';
-    note = 'Your keepsake membership has ended. All memories remain safe.';
+  }
+
+  let badgeText: string = config.badge;
+  let badgeColor = 'var(--color-text-secondary)';
+  let badgeBg = 'var(--color-bg-subtle)';
+  let note = 'Essential quiet room (5 memories, 5 notes, 2 letters, 4 dates)';
+
+  if (isExpired) {
+    badgeText = 'Expired (Free)';
+    badgeColor = 'var(--color-text-secondary)';
+    badgeBg = 'var(--color-bg-subtle)';
+    note = `Your 1-year club access expired on ${validUntilFormatted || 'recently'}. Your space has reverted to Free Sanctuary. All existing memories remain safe.`;
+  } else if (tier === 'SWEETHEART') {
+    badgeText = 'Sweetheart Club (₹69 / yr)';
+    badgeColor = 'var(--color-accent)';
+    badgeBg = 'var(--color-tint-rose)';
+    note = validUntilFormatted
+      ? `Sweetheart Room: 10 memories, 15 notes, 15 letters, 20 dates • Valid until ${validUntilFormatted}`
+      : 'Sweetheart Room: 10 memories, 15 notes, 15 letters, 20 dates (₹69 / year)';
+  } else if (tier === 'FOREVER') {
+    badgeText = 'Forever Club (₹119 / yr)';
+    badgeColor = 'var(--color-accent)';
+    badgeBg = 'var(--color-tint-rose)';
+    note = validUntilFormatted
+      ? `Forever Room: 25 memories, 35 notes, 30 letters, 30 dates • Valid until ${validUntilFormatted}`
+      : 'Forever Room: 25 memories, 35 notes, 30 letters, 30 dates (₹119 / year)';
+  } else if (rawStatus === 'CANCELED') {
+    badgeText = 'Plan Reset';
+    badgeColor = 'var(--color-text-secondary)';
+    badgeBg = 'var(--color-bg-subtle)';
+    note = 'Your space is on the Free Sanctuary tier. All existing memories remain safe.';
   }
 
   return {
-    isPremium,
-    status,
-    planType,
-    periodEnd,
-    isCancelScheduled,
+    tier,
+    isPremium: tier !== 'FREE',
+    status: isExpired ? 'EXPIRED' : rawStatus,
     badgeText,
     badgeColor,
     badgeBg,
     note,
+    validUntil: validUntilFormatted,
+    planName: config.name,
+    priceFormatted: config.priceFormatted,
   };
 }
+

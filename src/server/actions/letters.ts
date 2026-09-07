@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { OpenWhenLetterInputSchema } from '@/lib/validation';
 import { requireCoupleAuth, assertCoupleOwnership } from '@/lib/auth/guard';
 import { checkPlanLimit } from '@/lib/payments/stripe';
+import { checkDeletionLock } from '@/lib/config/plans';
 
 export async function createOpenWhenLetter(input: unknown) {
   const auth = await requireCoupleAuth();
@@ -17,11 +18,11 @@ export async function createOpenWhenLetter(input: unknown) {
     where: { coupleId: auth.coupleId },
   });
 
-  const { allowed, limit } = checkPlanLimit(auth.isPremium, 'letters', currentCount);
+  const { allowed, limit, tierName } = checkPlanLimit(auth.tier, 'letters', currentCount);
   if (!allowed) {
     return {
       success: false,
-      error: `You have filled your sanctuary room of ${limit} sealed letters. Unlock more room for our story with the Little Us Keepsake Club.`,
+      error: `You have filled your room of ${limit} sealed letters on the ${tierName}. Unlock more room with Sweetheart Club (₹69) or Forever Club (₹119).`,
     };
   }
 
@@ -173,11 +174,20 @@ export async function deleteLetter(letterId: string) {
 
   const letter = await db.openWhenLetter.findUnique({
     where: { id: letterId },
-    select: { id: true, coupleId: true },
+    select: { id: true, coupleId: true, createdAt: true },
   });
 
   if (!letter) return { success: false, error: 'Letter not found' };
   assertCoupleOwnership(letter.coupleId, auth.coupleId);
+
+  const lock = checkDeletionLock(letter.createdAt);
+  if (lock.isLocked) {
+    return {
+      success: false,
+      error: lock.formattedLockMessage,
+      daysRemaining: lock.daysRemaining,
+    };
+  }
 
   await db.openWhenLetter.delete({
     where: { id: letterId },

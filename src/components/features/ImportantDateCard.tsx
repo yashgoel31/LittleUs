@@ -3,6 +3,7 @@
 import React from 'react';
 import { calculateDateMilestone } from '@/lib/utils';
 import { deleteImportantDate } from '@/server/actions/dates';
+import { checkDeletionLock } from '@/lib/config/plans';
 
 export interface ImportantDateData {
   id: string;
@@ -17,6 +18,7 @@ export interface ImportantDateData {
   isPast?: boolean;
   yearsPassed?: number;
   formattedTargetDate?: string;
+  createdAt?: Date | string;
 }
 
 interface ImportantDateCardProps {
@@ -27,6 +29,7 @@ interface ImportantDateCardProps {
 
 export function ImportantDateCard({ item, onEdit, onRefresh }: ImportantDateCardProps) {
   const [isDeleting, setIsDeleting] = React.useState(false);
+  const lock = checkDeletionLock(item.createdAt);
 
   // Recalculate milestone if not precalculated
   const milestone = calculateDateMilestone(item.date, item.isYearly);
@@ -38,9 +41,18 @@ export function ImportantDateCard({ item, onEdit, onRefresh }: ImportantDateCard
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (lock.isLocked) {
+      alert(lock.formattedLockMessage);
+      return;
+    }
     if (!confirm(`Remove milestone "${item.title}"?`)) return;
     setIsDeleting(true);
-    await deleteImportantDate(item.id);
+    const res = await deleteImportantDate(item.id);
+    if (!res.success) {
+      alert(res.error || 'Unable to delete milestone');
+      setIsDeleting(false);
+      return;
+    }
     onRefresh?.();
   };
 
@@ -174,14 +186,23 @@ export function ImportantDateCard({ item, onEdit, onRefresh }: ImportantDateCard
             style={{
               background: 'none',
               border: 'none',
-              cursor: 'pointer',
+              cursor: lock.isLocked ? 'default' : 'pointer',
               fontSize: '0.8125rem',
               color: 'var(--color-text-tertiary)',
-              padding: '0.3rem',
+              padding: '0.2rem 0.35rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.15rem',
+              borderRadius: 'var(--radius-sm)',
+              backgroundColor: lock.isLocked ? 'rgba(0,0,0,0.04)' : 'transparent',
             }}
-            title="Delete milestone"
+            title={
+              lock.isLocked
+                ? `Protected: Locked for 21 days from creation (${lock.daysRemaining}d remaining)`
+                : 'Delete milestone'
+            }
           >
-            ✕
+            {lock.isLocked ? `🔒 ${lock.daysRemaining}d` : '✕'}
           </button>
         </div>
       </div>

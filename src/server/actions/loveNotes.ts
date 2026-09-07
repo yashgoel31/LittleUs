@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { LoveNoteInputSchema } from '@/lib/validation';
 import { requireCoupleAuth, assertCoupleOwnership } from '@/lib/auth/guard';
 import { checkPlanLimit } from '@/lib/payments/stripe';
+import { checkDeletionLock } from '@/lib/config/plans';
 
 export async function createLoveNote(input: unknown) {
   const auth = await requireCoupleAuth();
@@ -17,11 +18,11 @@ export async function createLoveNote(input: unknown) {
     where: { coupleId: auth.coupleId },
   });
 
-  const { allowed, limit } = checkPlanLimit(auth.isPremium, 'loveNotes', currentCount);
+  const { allowed, limit, tierName } = checkPlanLimit(auth.tier, 'loveNotes', currentCount);
   if (!allowed) {
     return {
       success: false,
-      error: `You have filled your sanctuary room of ${limit} love notes. Unlock more room for our story with the Little Us Keepsake Club.`,
+      error: `You have filled your room of ${limit} love notes on the ${tierName}. Unlock more room with Sweetheart Club (₹69) or Forever Club (₹119).`,
     };
   }
 
@@ -149,11 +150,20 @@ export async function deleteLoveNote(noteId: string) {
 
   const note = await db.loveNote.findUnique({
     where: { id: noteId },
-    select: { id: true, coupleId: true },
+    select: { id: true, coupleId: true, createdAt: true },
   });
 
   if (!note) return { success: false, error: 'Note not found' };
   assertCoupleOwnership(note.coupleId, auth.coupleId);
+
+  const lock = checkDeletionLock(note.createdAt);
+  if (lock.isLocked) {
+    return {
+      success: false,
+      error: lock.formattedLockMessage,
+      daysRemaining: lock.daysRemaining,
+    };
+  }
 
   await db.loveNote.delete({
     where: { id: noteId },

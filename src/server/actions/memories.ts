@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { MemoryInputSchema } from '@/lib/validation';
 import { requireCoupleAuth, assertCoupleOwnership } from '@/lib/auth/guard';
 import { checkPlanLimit } from '@/lib/payments/stripe';
+import { checkDeletionLock } from '@/lib/config/plans';
 
 export async function createMemory(input: unknown) {
   const auth = await requireCoupleAuth();
@@ -18,11 +19,11 @@ export async function createMemory(input: unknown) {
     where: { coupleId: auth.coupleId },
   });
 
-  const { allowed, limit } = checkPlanLimit(auth.isPremium, 'memories', currentCount);
+  const { allowed, limit, tierName } = checkPlanLimit(auth.tier, 'memories', currentCount);
   if (!allowed) {
     return {
       success: false,
-      error: `You have filled your sanctuary room of ${limit} memories. Unlock more room for our story with the Little Us Keepsake Club.`,
+      error: `You have filled your room of ${limit} memories on the ${tierName}. Unlock more room with Sweetheart Club (₹69) or Forever Club (₹119).`,
     };
   }
 
@@ -103,11 +104,20 @@ export async function deleteMemory(memoryId: string) {
 
   const memory = await db.memory.findUnique({
     where: { id: memoryId },
-    select: { id: true, coupleId: true },
+    select: { id: true, coupleId: true, createdAt: true },
   });
 
   if (!memory) return { success: false, error: 'Memory not found' };
   assertCoupleOwnership(memory.coupleId, auth.coupleId);
+
+  const lock = checkDeletionLock(memory.createdAt);
+  if (lock.isLocked) {
+    return {
+      success: false,
+      error: lock.formattedLockMessage,
+      daysRemaining: lock.daysRemaining,
+    };
+  }
 
   await db.memory.delete({
     where: { id: memoryId },

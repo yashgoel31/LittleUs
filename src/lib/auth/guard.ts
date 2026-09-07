@@ -1,6 +1,7 @@
 import { getSession } from './session';
 import { db } from '../db';
-import { isPremiumSubscriber } from '@/lib/payments/subscriptionStatus';
+import { isPremiumSubscriber, getSubscriptionTier } from '@/lib/payments/subscriptionStatus';
+import { PlanTier } from '@/lib/config/plans';
 
 export interface CoupleAuthSession {
   userId: string;
@@ -12,6 +13,7 @@ export interface CoupleAuthSession {
   myNickname: string;
   role: string;
   isPremium: boolean;
+  tier: PlanTier;
 }
 
 /**
@@ -41,6 +43,7 @@ export async function requireCoupleAuth(): Promise<CoupleAuthSession> {
   }
 
   const isPremium = isPremiumSubscriber(membership.couple.subscription);
+  const tier = getSubscriptionTier(membership.couple.subscription);
 
   return {
     userId: session.userId,
@@ -52,6 +55,7 @@ export async function requireCoupleAuth(): Promise<CoupleAuthSession> {
     myNickname: membership.nickname,
     role: membership.role,
     isPremium,
+    tier,
   };
 }
 

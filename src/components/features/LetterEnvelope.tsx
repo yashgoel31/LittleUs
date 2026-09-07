@@ -3,6 +3,7 @@
 import React from 'react';
 import { formatIntimateDate } from '@/lib/utils';
 import { deleteLetter } from '@/server/actions/letters';
+import { checkDeletionLock } from '@/lib/config/plans';
 
 export interface OpenWhenLetterData {
   id: string;
@@ -29,12 +30,22 @@ interface LetterEnvelopeProps {
 
 export function LetterEnvelope({ letter, onOpen, onEdit, onRefresh }: LetterEnvelopeProps) {
   const [isDeleting, setIsDeleting] = React.useState(false);
+  const lock = checkDeletionLock(letter.createdAt);
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (lock.isLocked) {
+      alert(lock.formattedLockMessage);
+      return;
+    }
     if (!confirm('Let go of this sealed envelope?')) return;
     setIsDeleting(true);
-    await deleteLetter(letter.id);
+    const res = await deleteLetter(letter.id);
+    if (!res.success) {
+      alert(res.error || 'Unable to delete letter');
+      setIsDeleting(false);
+      return;
+    }
     onRefresh?.();
   };
 
@@ -140,14 +151,23 @@ export function LetterEnvelope({ letter, onOpen, onEdit, onRefresh }: LetterEnve
             style={{
               background: 'none',
               border: 'none',
-              cursor: 'pointer',
+              cursor: lock.isLocked ? 'default' : 'pointer',
               fontSize: '0.75rem',
               color: 'var(--color-text-tertiary)',
-              padding: '0.2rem',
+              padding: '0.2rem 0.35rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.15rem',
+              borderRadius: 'var(--radius-sm)',
+              backgroundColor: lock.isLocked ? 'rgba(0,0,0,0.04)' : 'transparent',
             }}
-            title="Delete letter"
+            title={
+              lock.isLocked
+                ? `Protected: Locked for 21 days from creation (${lock.daysRemaining}d remaining)`
+                : 'Delete letter'
+            }
           >
-            ✕
+            {lock.isLocked ? `🔒 ${lock.daysRemaining}d` : '✕'}
           </button>
         </div>
       </div>

@@ -159,12 +159,14 @@ model ImportantDate {
 model Subscription {
   id                   String    @id @default(cuid())
   coupleId             String    @unique
-  stripeCustomerId     String?
-  stripeSubscriptionId String?
-  stripePriceId        String?
-  planType             String?   @default("lifetime") // "lifetime" | "annual"
-  status               String    @default("FREE") // "FREE", "ACTIVE", "TRIALING", "PAST_DUE", "CANCELED", "INACTIVE"
-  tier                 String    @default("FREE") // "FREE", "PREMIUM"
+  razorpayOrderId      String?
+  razorpayPaymentId    String?
+  razorpaySignature    String?
+  amount               Int?      // Amount in paise: 6900 or 11900
+  currency             String    @default("INR")
+  planType             String?   @default("free") // "free" | "sweetheart_69" | "forever_119"
+  status               String    @default("FREE") // "FREE", "ACTIVE", "CANCELED"
+  tier                 String    @default("FREE") // "FREE", "SWEETHEART", "FOREVER"
   cancelAtPeriodEnd    Boolean   @default(false)
   currentPeriodEnd     DateTime?
   createdAt            DateTime  @default(now())
@@ -173,8 +175,8 @@ model Subscription {
   // Relations
   couple Couple @relation(fields: [coupleId], references: [id], onDelete: Cascade)
 
-  @@index([stripeCustomerId])
-  @@index([stripeSubscriptionId])
+  @@index([razorpayOrderId])
+  @@index([razorpayPaymentId])
 }
 
 model ProcessedWebhook {
