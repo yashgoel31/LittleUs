@@ -29,7 +29,7 @@ export default async function SpaceLayout({
         isPremium={auth.isPremium}
         tier={auth.tier}
       />
-      <main style={{ flex: 1, padding: '2rem 0 4rem 0' }}>
+      <main className="space-main-content">
         <div className="container">{children}</div>
       </main>
     </div>

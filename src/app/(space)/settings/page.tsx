@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getCoupleOverview, updateCoupleSettings } from '@/server/actions/couple';
 import { revertToFreeSanctuary } from '@/server/actions/subscription';
+import { logoutUser } from '@/server/actions/auth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { ShareModal } from '@/components/features/ShareModal';
@@ -165,7 +166,7 @@ export default function SpaceSettingsPage() {
       )}
 
       {/* Partner Link / Invite Code */}
-      <div className="surface-card" style={{ padding: '1.75rem', borderRadius: 'var(--radius-md)' }}>
+      <div className="surface-card" style={{ borderRadius: 'var(--radius-md)' }}>
         <h3 className="font-serif" style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>
           Partner Connection
         </h3>
@@ -178,8 +179,10 @@ export default function SpaceSettingsPage() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '0.85rem',
             background: 'var(--bg-secondary)',
-            padding: '0.75rem 1.25rem',
+            padding: '0.85rem 1.15rem',
             borderRadius: 'var(--radius-sm)',
             border: '1px solid var(--border-medium)',
           }}
@@ -225,8 +228,8 @@ export default function SpaceSettingsPage() {
       </div>
 
       {/* Shareable Page Settings */}
-      <div className="surface-card" style={{ padding: '1.75rem', borderRadius: 'var(--radius-md)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+      <div className="surface-card" style={{ borderRadius: 'var(--radius-md)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.75rem' }}>
           <div>
             <h3 className="font-serif" style={{ fontSize: '1.25rem' }}>
               Share Our Little World
@@ -243,13 +246,13 @@ export default function SpaceSettingsPage() {
             Share Controls
           </Button>
         </div>
-        <div style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)' }}>
+        <div style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)', wordBreak: 'break-all' }}>
           Public link: <code style={{ background: 'var(--bg-secondary)', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>/us/{couple.slug || '...'}</code>
         </div>
       </div>
 
       {/* General Settings */}
-      <div className="surface-card" style={{ padding: '1.75rem', borderRadius: 'var(--radius-md)' }}>
+      <div className="surface-card" style={{ borderRadius: 'var(--radius-md)' }}>
         <h3 className="font-serif" style={{ fontSize: '1.25rem', marginBottom: '1.25rem' }}>
           Space Details & Atmosphere
         </h3>
@@ -273,7 +276,7 @@ export default function SpaceSettingsPage() {
 
           {/* Theme Palette */}
           <div style={{ marginBottom: '1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.35rem' }}>
               <label className="input-label" style={{ margin: 0 }}>Sanctuary Atmosphere</label>
               {!isPremium && (
                 <span style={{ fontSize: '0.75rem', color: 'var(--color-accent)' }}>
@@ -281,7 +284,7 @@ export default function SpaceSettingsPage() {
                 </span>
               )}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '0.75rem' }}>
               {[
                 { id: 'candlelight' as const, name: 'Candlelight Cream', desc: 'Warm paper and amber' },
                 { id: 'rose' as const, name: 'Blush Rose', desc: 'Intimate soft pink and rose gold' },
@@ -338,7 +341,7 @@ export default function SpaceSettingsPage() {
       </div>
 
       {/* Subscription & Account Management */}
-      <div className="surface-card" style={{ padding: '1.75rem', borderRadius: 'var(--radius-md)' }}>
+      <div className="surface-card" style={{ borderRadius: 'var(--radius-md)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
           <div>
             <h3 className="font-serif" style={{ fontSize: '1.25rem', marginBottom: '0.25rem' }}>
@@ -456,6 +459,27 @@ export default function SpaceSettingsPage() {
               </div>
             </>
           )}
+        </div>
+      </div>
+
+      {/* Account & Session */}
+      <div className="surface-card" style={{ borderRadius: 'var(--radius-md)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div>
+            <h3 className="font-serif" style={{ fontSize: '1.2rem', marginBottom: '0.2rem' }}>
+              Account & Session
+            </h3>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+              Sign out of this sanctuary on this device
+            </p>
+          </div>
+          <button
+            onClick={() => logoutUser().then(() => (window.location.href = '/login'))}
+            className="btn-secondary"
+            style={{ fontSize: '0.8125rem', color: 'var(--color-accent)' }}
+          >
+            Sign out
+          </button>
         </div>
       </div>
 

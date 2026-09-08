@@ -95,7 +95,7 @@ export function ImportantDateCard({ item, onEdit, onRefresh }: ImportantDateCard
       }}
     >
       {/* Left: Icon, Title, Description, & Date info */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, minWidth: '220px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, minWidth: 'min(100%, 200px)' }}>
         <div
           style={{
             fontSize: '1.5rem',

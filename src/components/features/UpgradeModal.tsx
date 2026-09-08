@@ -169,7 +169,7 @@ export function UpgradeModal({
           overflowY: 'auto',
           borderRadius: 'var(--radius-lg)',
           boxShadow: 'var(--shadow-lg)',
-          padding: '2.25rem 2rem',
+          padding: '1.75rem 1.25rem',
           position: 'relative',
           border: '1px solid var(--color-border-subtle)',
         }}
@@ -298,8 +298,8 @@ export function UpgradeModal({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 1.15fr 1.15fr',
-            gap: '0.5rem',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 140px), 1fr))',
+            gap: '0.65rem',
             marginBottom: '1.75rem',
             fontSize: '0.75rem',
           }}

@@ -169,7 +169,7 @@ export default function UpgradePage() {
       <h1
         className="font-serif"
         style={{
-          fontSize: '2.5rem',
+          fontSize: 'clamp(1.85rem, 5vw, 2.5rem)',
           textAlign: 'center',
           letterSpacing: '-0.02em',
           color: 'var(--color-text-primary)',
@@ -314,7 +314,7 @@ export default function UpgradePage() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))',
           gap: '1.25rem',
           marginBottom: '2.5rem',
         }}
@@ -448,7 +448,7 @@ export default function UpgradePage() {
               borderRadius: 'var(--radius-full)',
             }}
           >
-            Recommended
+            Most Cherished
           </div>
 
           <div>
@@ -459,7 +459,7 @@ export default function UpgradePage() {
               ₹119 <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--color-text-tertiary)' }}>/ year</span>
             </div>
             <p style={{ fontSize: '0.84375rem', color: 'var(--color-text-secondary)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
-              Generous room for your entire journey. 25 memories, 35 love notes, 30 letters, 30 dates & 25 MB media for 1 year.
+              Endless spacious sanctuary for your whole journey. Generous room for memories, notes, letters, and custom themes.
             </p>
 
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.65rem', fontSize: '0.84375rem', color: 'var(--color-text-primary)' }}>
@@ -490,26 +490,40 @@ export default function UpgradePage() {
         </div>
       </div>
 
-      {/* Gentle Reassurance Note */}
+      {/* Intimate Sanctuary Reassurance Quote */}
       <div
         style={{
           textAlign: 'center',
-          padding: '1.5rem',
-          background: 'var(--color-bg-subtle)',
+          padding: '2rem 1.5rem',
+          background: 'var(--color-tint-rose)',
           borderRadius: 'var(--radius-md)',
-          border: '1px solid var(--color-border-subtle)',
+          border: '1px solid var(--color-tint-rose-border)',
         }}
       >
-        <h4 className="font-serif" style={{ fontSize: '1.15rem', marginBottom: '0.35rem', color: 'var(--color-text-primary)' }}>
+        <div style={{ color: 'var(--color-accent)', marginBottom: '0.65rem', display: 'flex', justifyContent: 'center' }}>
+          <IconHeart size={24} />
+        </div>
+        <h4 className="font-serif" style={{ fontSize: '1.25rem', marginBottom: '0.65rem', color: 'var(--color-text-primary)' }}>
           Our Promise to Both of You
         </h4>
-        <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, maxWidth: '540px', margin: '0 auto' }}>
-          All payments are processed securely via <strong>Razorpay</strong> in Indian Rupees (₹).
-          We never show ads in your world, and we will never hold your memories hostage.
-          Everything you create belongs exclusively to the two of you.
+        <p
+          className="font-serif"
+          style={{
+            fontSize: '1.1rem',
+            fontStyle: 'italic',
+            color: 'var(--color-text-primary)',
+            lineHeight: 1.6,
+            maxWidth: '520px',
+            margin: '0 auto 0.75rem auto',
+          }}
+        >
+          “In all the world, there is no heart for me like yours. In all the world, there is no love for you like mine.”
+        </p>
+        <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', lineHeight: 1.65, maxWidth: '500px', margin: '0 auto' }}>
+          Little Us was crafted to be a quiet, tender sanctuary for two. No public feeds, no ads, and no noise.
+          Every whisper, note, and memory you share here remains forever safe, belonging exclusively to the two of you.
         </p>
       </div>
     </div>
   );
 }
-

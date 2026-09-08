@@ -79,7 +79,7 @@ export default async function SanctuaryHomePage() {
         <h1
           className="font-serif"
           style={{
-            fontSize: '2.5rem',
+            fontSize: 'clamp(2rem, 6vw, 2.5rem)',
             fontWeight: 500,
             color: 'var(--color-text-primary)',
             letterSpacing: '-0.02em',
@@ -281,6 +281,8 @@ export default async function SanctuaryHomePage() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '0.85rem',
                   boxShadow: 'var(--shadow-card)',
                 }}
               >
