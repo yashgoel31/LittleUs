@@ -8,6 +8,7 @@ import { getImportantDates } from '@/server/actions/dates';
 import { getDaysTogether, formatIntimateDate, getDaysRemaining } from '@/lib/utils';
 import { MemoryCard } from '@/components/features/MemoryCard';
 import { LetterEnvelope } from '@/components/features/LetterEnvelope';
+import { PartnerInviteBanner } from '@/components/features/PartnerInviteBanner';
 import { IconHeart, IconPin, IconCalendar, IconMail, IconPlus } from '@/components/ui/Icons';
 
 export const dynamic = 'force-dynamic';
@@ -142,34 +143,7 @@ export default async function SanctuaryHomePage() {
 
       {/* Solo Partner Notice if awaiting partner */}
       {couple.members.length === 1 && (
-        <div
-          style={{
-            padding: '1rem 1.25rem',
-            borderRadius: 'var(--radius-md)',
-            background: 'var(--color-tint-rose)',
-            border: '1px solid var(--color-tint-rose-border)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '0.75rem',
-          }}
-        >
-          <div>
-            <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--color-accent-hover)' }}>
-              Waiting for your partner to step inside...
-            </div>
-            <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', marginTop: '0.15rem' }}>
-              Share your secret invite code:{' '}
-              <strong style={{ letterSpacing: '0.08em', color: 'var(--color-text-primary)' }}>
-                {couple.inviteCode}
-              </strong>
-            </div>
-          </div>
-          <Link href="/settings" className="btn-secondary" style={{ fontSize: '0.75rem', padding: '0.4rem 0.85rem' }}>
-            Invite Code Details
-          </Link>
-        </div>
+        <PartnerInviteBanner inviteCode={couple.inviteCode} coupleName={couple.name} />
       )}
 
       {/* =========================================================================

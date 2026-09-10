@@ -43,8 +43,9 @@ export const CreateCoupleSchema = z.object({
 });
 
 export const JoinCoupleSchema = z.object({
-  inviteCode: z.string().trim().min(6, 'Invalid invite code').max(32),
+  inviteCode: z.string().trim().min(4, 'Invalid invite code').max(32),
   myNickname: z.string().trim().min(1, 'Please choose a nickname for yourself').max(40),
+  myAvatar: z.string().optional().nullable(),
 });
 
 export const UpdateCoupleSchema = z.object({

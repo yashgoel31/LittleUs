@@ -1,15 +1,18 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { loginUser } from '@/server/actions/auth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { IconDove } from '@/components/ui/Icons';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get('callbackUrl');
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +30,7 @@ export default function LoginPage() {
       if (res.hasCouple) {
         router.push('/home');
       } else {
-        router.push('/onboarding');
+        router.push(callbackUrl || '/onboarding');
       }
       router.refresh();
     } else {
@@ -58,13 +61,13 @@ export default function LoginPage() {
       >
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div style={{ color: 'var(--color-accent)', display: 'inline-flex', marginBottom: '0.5rem' }}>
-            <IconDove size={30} />
+            <IconDove size={32} />
           </div>
           <h1 className="font-serif" style={{ fontSize: '1.85rem', color: 'var(--color-text-primary)' }}>
-            Welcome back.
+            Welcome back to Little Us
           </h1>
           <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginTop: '0.35rem' }}>
-            Step inside the quiet sanctuary of you two.
+            Your private sanctuary is quietly waiting for you.
           </p>
         </div>
 
@@ -78,7 +81,6 @@ export default function LoginPage() {
               fontSize: '0.84375rem',
               marginBottom: '1.5rem',
               border: '1px solid var(--color-tint-rose-border)',
-              lineHeight: 1.4,
             }}
           >
             {error}
@@ -96,17 +98,15 @@ export default function LoginPage() {
             autoComplete="email"
           />
 
-          <div style={{ position: 'relative' }}>
-            <Input
-              label="Password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              autoComplete="current-password"
-            />
-          </div>
+          <Input
+            label="Password"
+            type="password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            autoComplete="current-password"
+          />
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-0.75rem', marginBottom: '1.25rem' }}>
             <Link
@@ -124,11 +124,22 @@ export default function LoginPage() {
 
         <div style={{ textAlign: 'center', marginTop: '2rem', fontSize: '0.84375rem', color: 'var(--color-text-secondary)' }}>
           Don&apos;t have a shared world yet?{' '}
-          <Link href="/register" style={{ color: 'var(--color-accent)', fontWeight: 600 }}>
+          <Link
+            href={callbackUrl ? `/register?callbackUrl=${encodeURIComponent(callbackUrl)}` : '/register'}
+            style={{ color: 'var(--color-accent)', fontWeight: 600 }}
+          >
             Create one together
           </Link>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

@@ -5,7 +5,7 @@ import { jwtVerify } from 'jose';
 const SESSION_COOKIE_NAME = 'little_us_session';
 const DEFAULT_SECRET = 'little-us-dev-secret-key-32-chars-long-intimate-space';
 
-const PROTECTED_ROUTES = ['/home', '/memories', '/notes', '/letters', '/dates', '/settings', '/onboarding', '/upgrade'];
+const PROTECTED_ROUTES = ['/home', '/memories', '/notes', '/letters', '/dates', '/settings', '/onboarding', '/upgrade', '/join'];
 const AUTH_ROUTES = ['/login', '/register', '/forgot-password', '/reset-password'];
 
 export async function middleware(request: NextRequest) {
@@ -27,7 +27,8 @@ export async function middleware(request: NextRequest) {
   const isProtected = PROTECTED_ROUTES.some((route) => pathname.startsWith(route));
   if (isProtected && !isValidSession) {
     const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('callbackUrl', pathname);
+    const fullTarget = pathname + (request.nextUrl.search || '');
+    loginUrl.searchParams.set('callbackUrl', fullTarget);
     const response = NextResponse.redirect(loginUrl);
     if (token) {
       response.cookies.delete(SESSION_COOKIE_NAME);
@@ -54,6 +55,7 @@ export const config = {
     '/settings/:path*',
     '/upgrade/:path*',
     '/onboarding',
+    '/join',
     '/login',
     '/register',
     '/forgot-password',

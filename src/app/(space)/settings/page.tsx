@@ -15,7 +15,7 @@ import {
   isPremiumSubscriber,
   getSubscriptionDisplayInfo,
 } from '@/lib/payments/subscriptionStatus';
-import { IconSparkles } from '@/components/ui/Icons';
+import { IconSparkles, IconShare, IconCopy, IconCheck } from '@/components/ui/Icons';
 
 interface CoupleData {
   id: string;
@@ -57,6 +57,7 @@ export default function SpaceSettingsPage() {
   const [anniversaryDate, setAnniversaryDate] = useState('');
   const [theme, setTheme] = useState<'candlelight' | 'rose' | 'sage' | 'midnight'>('candlelight');
   const [copied, setCopied] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -106,6 +107,29 @@ export default function SpaceSettingsPage() {
     navigator.clipboard.writeText(couple.inviteCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
+  };
+
+  const handleShareInvite = async () => {
+    if (!couple?.inviteCode) return;
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const url = `${origin}/onboarding?code=${couple.inviteCode}`;
+    const shareData = {
+      title: `${couple.name} on Little Us`,
+      text: `Join me in our private sanctuary on Little Us with code: ${couple.inviteCode}`,
+      url,
+    };
+
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+      } catch {
+        // dismissed
+      }
+    } else {
+      navigator.clipboard.writeText(url);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2500);
+    }
   };
 
 
@@ -182,22 +206,31 @@ export default function SpaceSettingsPage() {
             flexWrap: 'wrap',
             gap: '0.85rem',
             background: 'var(--bg-secondary)',
-            padding: '0.85rem 1.15rem',
+            padding: '0.9rem 1.15rem',
             borderRadius: 'var(--radius-sm)',
             border: '1px solid var(--border-medium)',
+            marginBottom: '0.85rem',
           }}
         >
           <div>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>
               Your Couple Invite Code:
             </span>
-            <div style={{ fontSize: '1.4rem', fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text-primary)' }}>
+            <div style={{ fontSize: '1.4rem', fontWeight: 700, letterSpacing: '0.12em', color: 'var(--text-primary)', fontFamily: 'monospace, sans-serif' }}>
               {couple.inviteCode}
             </div>
           </div>
-          <button onClick={handleCopyInvite} className="btn-secondary" style={{ fontSize: '0.8125rem' }}>
-            {copied ? '✓ Copied' : 'Copy Code'}
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button onClick={handleShareInvite} className="btn-primary" style={{ fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+              {copiedLink ? <><IconCheck size={15} /> Link Copied</> : <><IconShare size={15} /> Share Link</>}
+            </button>
+            <button onClick={handleCopyInvite} className="btn-secondary" style={{ fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+              {copied ? <><IconCheck size={15} /> Copied</> : <><IconCopy size={15} /> Copy Code</>}
+            </button>
+          </div>
+        </div>
+        <div style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)' }}>
+          Direct join link: <code style={{ background: 'var(--bg-secondary)', padding: '0.2rem 0.4rem', borderRadius: '4px', wordBreak: 'break-all' }}>/onboarding?code={couple.inviteCode}</code>
         </div>
 
         <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-light)', paddingTop: '1rem' }}>

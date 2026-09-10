@@ -1,15 +1,18 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { registerUser } from '@/server/actions/auth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { IconHeart } from '@/components/ui/Icons';
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get('callbackUrl');
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -30,8 +33,8 @@ export default function RegisterPage() {
     setLoading(false);
 
     if (res.success) {
-      // New users always go to onboarding
-      router.push('/onboarding');
+      // If invited with a callbackUrl (e.g. /onboarding?mode=join&code=...), go there directly
+      router.push(callbackUrl || '/onboarding');
       router.refresh();
     } else {
       setError(res.error || 'Failed to create account');
@@ -61,13 +64,13 @@ export default function RegisterPage() {
       >
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div style={{ color: 'var(--color-accent)', display: 'inline-flex', marginBottom: '0.5rem' }}>
-            <IconHeart size={28} />
+            <IconHeart size={32} />
           </div>
           <h1 className="font-serif" style={{ fontSize: '1.85rem', color: 'var(--color-text-primary)' }}>
-            Begin Your Little Us
+            Begin your story
           </h1>
           <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginTop: '0.35rem' }}>
-            Create an account to start your shared couple space.
+            Create an account to begin building or joining your private sanctuary.
           </p>
         </div>
 
@@ -90,47 +93,57 @@ export default function RegisterPage() {
         <form onSubmit={handleSubmit}>
           <Input
             label="Your First Name"
-            type="text"
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Maya"
-            autoComplete="name"
+            autoComplete="given-name"
           />
 
           <Input
-            label="Your Email"
+            label="Email Address"
             type="email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="maya@example.com"
+            placeholder="you@example.com"
             autoComplete="email"
           />
 
           <Input
-            label="Password"
+            label="Create Password"
             type="password"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="At least 8 characters"
-            hint="Keeps your private memories and notes safe"
             autoComplete="new-password"
+            hint="Must be at least 8 characters long"
           />
 
           <Button type="submit" isLoading={loading} style={{ width: '100%', marginTop: '0.5rem' }}>
-            Create Account & Continue →
+            Create Account →
           </Button>
         </form>
 
         <div style={{ textAlign: 'center', marginTop: '2rem', fontSize: '0.84375rem', color: 'var(--color-text-secondary)' }}>
           Already have an account?{' '}
-          <Link href="/login" style={{ color: 'var(--color-accent)', fontWeight: 600 }}>
-            Sign in
+          <Link
+            href={callbackUrl ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}` : '/login'}
+            style={{ color: 'var(--color-accent)', fontWeight: 600 }}
+          >
+            Step inside
           </Link>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading...</div>}>
+      <RegisterForm />
+    </Suspense>
   );
 }

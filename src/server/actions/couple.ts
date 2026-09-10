@@ -66,6 +66,48 @@ export async function createCoupleSpace(input: unknown) {
   return { success: true, couple };
 }
 
+export async function previewCoupleByInviteCode(inviteCode: string) {
+  const code = (inviteCode || '').trim().toUpperCase();
+  if (!code || code.length < 4) {
+    return { success: false, error: 'Please enter a valid invite code' };
+  }
+
+  const couple = await db.couple.findUnique({
+    where: { inviteCode: code },
+    include: {
+      members: {
+        include: {
+          user: {
+            select: { name: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!couple) {
+    return { success: false, error: 'No sanctuary found with this invite code. Check with your partner.' };
+  }
+
+  if (couple.members.length >= 2) {
+    return { success: false, error: 'This sanctuary already has its two partners linked.' };
+  }
+
+  const creator = couple.members[0];
+
+  return {
+    success: true,
+    couple: {
+      id: couple.id,
+      name: couple.name,
+      creatorName: creator?.nickname || creator?.user?.name || 'Your partner',
+      creatorAvatar: creator?.avatarUrl || '🕊️',
+      theme: couple.theme,
+      createdAt: couple.createdAt,
+    },
+  };
+}
+
 export async function joinCoupleSpace(input: unknown) {
   const session = await getSession();
   if (!session?.userId) {
@@ -77,7 +119,7 @@ export async function joinCoupleSpace(input: unknown) {
     return { success: false, error: parsed.error.errors[0]?.message };
   }
 
-  const { inviteCode, myNickname } = parsed.data;
+  const { inviteCode, myNickname, myAvatar } = parsed.data;
 
   // Find couple by invite code
   const couple = await db.couple.findUnique({
@@ -111,6 +153,7 @@ export async function joinCoupleSpace(input: unknown) {
       coupleId: couple.id,
       userId: session.userId,
       nickname: myNickname,
+      avatarUrl: myAvatar || '🌿',
       role: 'PARTNER',
     },
   });
