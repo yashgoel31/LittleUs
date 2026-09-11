@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createCoupleSpace, joinCoupleSpace, previewCoupleByInviteCode } from '@/server/actions/couple';
+import { logoutUser } from '@/server/actions/auth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import {
@@ -962,6 +963,29 @@ function OnboardingContent() {
             {step === 5 && renderStep5()}
           </div>
         )}
+
+        {/* Account switch / Sign out option */}
+        <div style={{ textAlign: 'center', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border-subtle)', fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>
+          Want to use an existing account?{' '}
+          <button
+            type="button"
+            onClick={async () => {
+              await logoutUser();
+              window.location.href = '/login';
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--color-accent)',
+              fontWeight: 600,
+              cursor: 'pointer',
+              textDecoration: 'underline',
+              padding: 0,
+            }}
+          >
+            Sign out & log in here →
+          </button>
+        </div>
       </div>
     </div>
   );

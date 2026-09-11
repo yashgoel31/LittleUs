@@ -128,9 +128,9 @@ export default async function LandingPage() {
       >
         <div className="container">
           <p className="font-serif" style={{ fontSize: '1rem', color: 'var(--color-text-secondary)', marginBottom: '0.35rem' }}>
-            Little Us
+            LittleUs — A private world
           </p>
-          <p>A quiet, private sanctuary designed with care for two.</p>
+          <p>A quiet, private world designed with care for two.</p>
         </div>
       </footer>
     </div>

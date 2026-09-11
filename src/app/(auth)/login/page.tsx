@@ -64,10 +64,10 @@ function LoginForm() {
             <IconDove size={32} />
           </div>
           <h1 className="font-serif" style={{ fontSize: '1.85rem', color: 'var(--color-text-primary)' }}>
-            Welcome back to Little Us
+            Welcome back to LittleUs
           </h1>
           <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginTop: '0.35rem' }}>
-            Your private sanctuary is quietly waiting for you.
+            Your private world is quietly waiting for you.
           </p>
         </div>
 

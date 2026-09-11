@@ -98,10 +98,12 @@ export function LetterEnvelope({ letter, onOpen, onEdit, onRefresh }: LetterEnve
           {/* Digital Wax Seal Badge */}
           <div
             style={{
-              width: '24px',
-              height: '24px',
-              borderRadius: '50%',
-              backgroundColor: isOpened ? 'var(--color-bg-subtle)' : 'var(--color-accent)',
+              width: '26px',
+              height: '26px',
+              borderRadius: isOpened ? '50%' : '48% 52% 51% 49% / 53% 47% 53% 47%',
+              background: isOpened
+                ? 'var(--color-bg-subtle)'
+                : 'radial-gradient(circle at 35% 35%, #D46B62 0%, #A9433B 70%, #7E2822 100%)',
               color: isOpened ? 'var(--color-text-tertiary)' : '#FFFFFF',
               border: isOpened ? '1px solid var(--color-border-default)' : '1px solid rgba(0,0,0,0.1)',
               display: 'flex',
@@ -109,7 +111,8 @@ export function LetterEnvelope({ letter, onOpen, onEdit, onRefresh }: LetterEnve
               justifyContent: 'center',
               fontSize: '0.75rem',
               fontWeight: 700,
-              boxShadow: isOpened ? 'none' : '0 1px 3px rgba(188, 93, 84, 0.3)',
+              boxShadow: isOpened ? 'none' : '0 2px 6px rgba(169, 67, 59, 0.35)',
+              flexShrink: 0,
             }}
           >
             {isOpened ? '✓' : '♥'}

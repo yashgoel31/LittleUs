@@ -2,9 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { getMemories, createMemory } from '@/server/actions/memories';
+import { getCoupleOverview } from '@/server/actions/couple';
 import { MemoryCard } from '@/components/features/MemoryCard';
+import { PhotoUploader } from '@/components/features/PhotoUploader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { PlanTier } from '@/lib/config/plans';
 
 interface MemoryItem {
   id: string;
@@ -33,12 +36,19 @@ export default function MemoriesPage() {
   const [content, setContent] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [location, setLocation] = useState('');
-  const [photoUrlInput, setPhotoUrlInput] = useState('');
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [tier, setTier] = useState<PlanTier>('FREE');
 
   const fetchMemories = async () => {
     try {
-      const list = await getMemories();
+      const [list, overview] = await Promise.all([
+        getMemories(),
+        getCoupleOverview(),
+      ]);
       setMemories(list as MemoryItem[]);
+      if (overview?.currentAuth?.tier) {
+        setTier(overview.currentAuth.tier);
+      }
     } finally {
       setInitialLoading(false);
     }
@@ -52,11 +62,6 @@ export default function MemoriesPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-
-    const photoUrls = photoUrlInput
-      .split('\n')
-      .map((u) => u.trim())
-      .filter((u) => u.length > 0 && u.startsWith('http'));
 
     const res = await createMemory({
       title,
@@ -73,7 +78,7 @@ export default function MemoriesPage() {
       setTitle('');
       setContent('');
       setLocation('');
-      setPhotoUrlInput('');
+      setPhotoUrls([]);
       setShowModal(false);
       fetchMemories();
     } else {
@@ -204,16 +209,11 @@ export default function MemoriesPage() {
               />
             </div>
 
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label className="input-label">Photo URLs (Optional, one per line)</label>
-              <textarea
-                rows={2}
-                className="input-field"
-                value={photoUrlInput}
-                onChange={(e) => setPhotoUrlInput(e.target.value)}
-                placeholder="https://images.unsplash.com/... (one link per line)"
-              />
-            </div>
+            <PhotoUploader
+              photos={photoUrls}
+              onChange={setPhotoUrls}
+              tier={tier}
+            />
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
               <button
